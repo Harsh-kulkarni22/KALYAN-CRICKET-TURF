@@ -23,6 +23,31 @@ const MobileTimePicker = dynamic(
   }
 );
 
+const calculateBookingPrice = (startTimeStr: string, duration: number, basePrice: number) => {
+  const [startHour] = startTimeStr.split(':').map(Number);
+  let totalAmount = 0;
+  let lightsCharge = 0;
+  let baseAmount = 0;
+
+  for (let i = 0; i < duration; i++) {
+    const currentHour = (startHour + i) % 24;
+    if (currentHour < 17) {
+      totalAmount += basePrice;
+      baseAmount += basePrice;
+    } else {
+      totalAmount += basePrice + 100;
+      baseAmount += basePrice;
+      lightsCharge += 100;
+    }
+  }
+
+  return {
+    totalAmount,
+    lightsCharge,
+    baseAmount
+  };
+};
+
 export default function Book() {
   const router = useRouter();
 
@@ -32,6 +57,8 @@ export default function Book() {
   const [startTime, setStartTime] = useState<Dayjs>(dayjs());
   const [duration, setDuration] = useState(1);
   const [pricePerHour, setPricePerHour] = useState(600);
+  const [baseAmount, setBaseAmount] = useState(600);
+  const [lightsCharge, setLightsCharge] = useState(0);
   const [totalCost, setTotalCost] = useState(600);
 
   // Set current time rounded to next 30 min
@@ -65,10 +92,15 @@ export default function Book() {
       .catch((err) => console.error("Failed to fetch settings:", err));
   }, []);
 
-  // Update total cost
+  // Update total cost and detailed breakdown
   useEffect(() => {
-    setTotalCost(duration * pricePerHour);
-  }, [duration, pricePerHour]);
+    if (!startTime) return;
+    const timeStr = startTime.format("HH:mm");
+    const pricing = calculateBookingPrice(timeStr, duration, pricePerHour);
+    setBaseAmount(pricing.baseAmount);
+    setLightsCharge(pricing.lightsCharge);
+    setTotalCost(pricing.totalAmount);
+  }, [startTime, duration, pricePerHour]);
 
   const handleProceed = () => {
     if (!date || !startTime) {
@@ -96,6 +128,9 @@ export default function Book() {
       date,
       startTime: startTime.format("HH:mm"),
       duration,
+      pricePerHour,
+      baseAmount,
+      lightsCharge,
       totalCost,
     };
 
@@ -220,15 +255,27 @@ export default function Book() {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500 font-medium">Start Time</span>
-                <span className="text-gray-800 font-bold">{startTime.format("hh:mm A")}</span>
+                <span className="text-gray-800 font-bold">{startTime ? startTime.format("hh:mm A") : ""}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500 font-medium">Duration</span>
                 <span className="text-gray-800 font-bold">{duration} Hour(s)</span>
               </div>
-              <div className="flex justify-between border-t border-gray-100 pt-3.5 font-semibold">
-                <span className="text-gray-500 font-medium">Rate / Hour</span>
-                <span className="text-[#2A364E]">₹{pricePerHour}</span>
+              <div className="flex justify-between border-t border-gray-100 pt-3.5">
+                <span className="text-gray-500 font-medium">Base Rate</span>
+                <span className="text-gray-800 font-bold">₹{pricePerHour}/hour</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500 font-medium">Lights Charge After 5 PM</span>
+                <span className="text-gray-800 font-bold">+₹100/hour</span>
+              </div>
+              <div className="flex justify-between border-t border-gray-100 pt-3.5">
+                <span className="text-gray-500 font-medium">Base Amount</span>
+                <span className="text-gray-800 font-semibold">₹{baseAmount}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500 font-medium">Lights Charge</span>
+                <span className="text-gray-800 font-semibold">₹{lightsCharge}</span>
               </div>
               <div className="flex justify-between border-t border-gray-100 pt-3.5 text-base font-extrabold">
                 <span className="text-[#2A364E]">Total Amount</span>
@@ -251,7 +298,7 @@ export default function Book() {
       {/* Mobile-only Bottom Bar */}
       <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t border-gray-200 p-4 flex items-center justify-between shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] lg:hidden">
         <div className="text-gray-800 font-bold text-sm">
-          Total Cost
+          Total Amount
           <span className="text-playoGreen ml-2 text-base">
             ₹{totalCost}
           </span>

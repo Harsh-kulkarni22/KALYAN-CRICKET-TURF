@@ -115,6 +115,11 @@ export default function Payment() {
 
   if (!bookingData) return null;
 
+  const baseRate = bookingData.pricePerHour || 600;
+  const baseAmount = bookingData.baseAmount !== undefined ? bookingData.baseAmount : (bookingData.totalCost || 0);
+  const lightsCharge = bookingData.lightsCharge !== undefined ? bookingData.lightsCharge : 0;
+  const totalAmount = bookingData.totalCost || 0;
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 pb-24">
       {/* <Script src="https://checkout.razorpay.com/v1/checkout.js" /> */}
@@ -154,6 +159,33 @@ export default function Payment() {
               </div>
             </div>
 
+            {/* Billing Details (Mobile only) */}
+            <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 lg:hidden">
+              <h2 className="font-extrabold text-lg text-[#2A364E] border-b border-gray-100 pb-3 mb-3">Billing Details</h2>
+              <div className="space-y-3.5 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-500 font-medium">Base Rate</span>
+                  <span className="text-gray-800 font-bold">₹{baseRate}/hour</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500 font-medium">Lights Charge After 5 PM</span>
+                  <span className="text-gray-800 font-bold">+₹100/hour</span>
+                </div>
+                <div className="flex justify-between border-t border-gray-100 pt-3">
+                  <span className="text-gray-500 font-medium">Base Amount</span>
+                  <span className="text-gray-800 font-bold">₹{baseAmount}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500 font-medium">Lights Charge</span>
+                  <span className="text-gray-800 font-bold">₹{lightsCharge}</span>
+                </div>
+                <div className="flex justify-between border-t border-gray-100 pt-3 text-base font-extrabold text-[#2A364E]">
+                  <span>Total Amount</span>
+                  <span className="text-playoGreen">₹{totalAmount}</span>
+                </div>
+              </div>
+            </div>
+
             {/* Payment Options */}
             <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
               <h2 className="font-bold text-md text-[#2A364E] mb-3">Payment Options</h2>
@@ -184,13 +216,25 @@ export default function Payment() {
             <h3 className="font-extrabold text-[#2A364E] text-lg border-b border-gray-100 pb-3 mb-2">Billing Details</h3>
 
             <div className="space-y-3.5 text-sm">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-500 flex items-center gap-1 font-medium">Base Price <Info size={14} className="text-gray-400" /></span>
-                <span className="font-bold text-gray-800">₹{bookingData.totalCost}</span>
+              <div className="flex justify-between">
+                <span className="text-gray-500 font-medium">Base Rate</span>
+                <span className="text-gray-800 font-bold">₹{baseRate}/hour</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500 font-medium">Lights Charge After 5 PM</span>
+                <span className="text-gray-800 font-bold">+₹100/hour</span>
+              </div>
+              <div className="flex justify-between border-t border-gray-100 pt-3.5">
+                <span className="text-gray-500 font-medium">Base Amount</span>
+                <span className="text-gray-800 font-semibold">₹{baseAmount}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500 font-medium">Lights Charge</span>
+                <span className="text-gray-800 font-semibold">₹{lightsCharge}</span>
               </div>
               <div className="flex justify-between items-center border-t border-gray-100 pt-3.5 text-base font-extrabold text-[#2A364E]">
                 <span>Total Amount</span>
-                <span className="text-playoGreen">₹{bookingData.totalCost}</span>
+                <span className="text-playoGreen">₹{totalAmount}</span>
               </div>
             </div>
 

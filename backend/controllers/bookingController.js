@@ -4,6 +4,7 @@ import User from '../models/User.js';
 import Notification from '../models/Notification.js';
 import Razorpay from 'razorpay';
 import { sendEmailNotification } from '../utils/sendEmailNotification.js';
+import { calculateBookingPrice } from '../utils/pricing.js';
 
 const toMinutes = (timeStr) => {
   const [h, m] = timeStr.split(':').map(Number);
@@ -103,7 +104,12 @@ export const createBooking = async (req, res) => {
       return res.status(400).json({ error: 'This time slot is already booked or locked for checkout. Please choose another slot.' });
     }
 
-    const totalAmount = settings.pricePerHour * duration;
+    const pricing = calculateBookingPrice(
+      startTime,
+      duration,
+      settings.pricePerHour
+    );
+    const totalAmount = pricing.totalAmount;
 
     // 4. Handle Cash Payment directly
     if (paymentMethod === 'cash') {
