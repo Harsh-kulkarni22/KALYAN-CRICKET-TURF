@@ -1,5 +1,4 @@
-import nodemailer from 'nodemailer';
-import { google } from 'googleapis';
+import { sendEmail } from './emailService.js';
 import Settings from '../models/Settings.js';
 import EmailLog from '../models/EmailLog.js';
 
@@ -28,16 +27,6 @@ export const sendEmailNotification = async ({
       return;
     }
 
-    const userEmail = process.env.EMAIL_USER;
-    const clientId = process.env.GOOGLE_CLIENT_ID;
-    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-    const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
-
-    if (!userEmail || !clientId || !clientSecret || !refreshToken) {
-      console.log("[Email] Skipped: Nodemailer OAuth2 credentials (EMAIL_USER, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN) are not defined in environment.");
-      return;
-    }
-
     // 1. Create a pending email log entry
     const log = new EmailLog({
       email,
@@ -48,99 +37,60 @@ export const sendEmailNotification = async ({
 
     // 2. Build template content
     let subject = '';
-    let body = '';
+    let html = '';
 
     if (type === 'match_reminder') {
       subject = 'Reminder - Your Turf Booking Starts in 1 Hour';
-      body = `🏏 KALYAN CRICKET TURF
-
-Hello ${customerName},
-
-This is a reminder that your booking starts in 1 hour.
-
-📅 Date : ${date}
-
-🕗 Time : ${time}
-
-⏱ Duration : ${duration}
-
-See you soon!`;
+      html = `
+        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+          <h2 style="color: #1b4332; margin-top: 0;">🏏 KALYAN CRICKET TURF</h2>
+          <p>Hello <strong>${customerName}</strong>,</p>
+          <p>This is a reminder that your booking starts in 1 hour.</p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+          <p style="margin: 5px 0;">📅 <strong>Date:</strong> ${date}</p>
+          <p style="margin: 5px 0;">🕗 <strong>Time:</strong> ${time}</p>
+          <p style="margin: 5px 0;">⏱ <strong>Duration:</strong> ${duration}</p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+          <p style="margin-bottom: 0;">See you soon!</p>
+        </div>
+      `;
     } else if (type === 'booking_cancelled') {
       subject = 'KALYAN Cricket Turf Booking Cancellation';
-      body = `🏏 KALYAN CRICKET TURF
-
-Hello ${customerName},
-
-Booking Cancelled ❌
-
-📅 Date : ${date}
-
-🕗 Time : ${time}
-
-⏱ Duration : ${duration}
-
-Your booking has been cancelled successfully.`;
+      html = `
+        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+          <h2 style="color: #c1121f; margin-top: 0;">🏏 KALYAN CRICKET TURF</h2>
+          <p>Hello <strong>${customerName}</strong>,</p>
+          <p style="font-size: 16px; color: #c1121f;"><strong>Booking Cancelled ❌</strong></p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+          <p style="margin: 5px 0;">📅 <strong>Date:</strong> ${date}</p>
+          <p style="margin: 5px 0;">🕗 <strong>Time:</strong> ${time}</p>
+          <p style="margin: 5px 0;">⏱ <strong>Duration:</strong> ${duration}</p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+          <p style="margin-bottom: 0; color: #666; font-size: 12px;">Your booking has been cancelled successfully.</p>
+        </div>
+      `;
     } else {
       // default: booking_confirmation
       subject = 'KALYAN Cricket Turf Booking Confirmation';
-      body = `🏏 KALYAN CRICKET TURF
-
-Hello ${customerName},
-
-Booking Confirmed ✅
-
-📅 Date : ${date}
-
-🕗 Time : ${time}
-
-⏱ Duration : ${duration}
-
-💰 Amount : ₹${amount}
-
-💳 Payment : ${paymentMethod}
-
-Booking ID : ${bookingId}
-
-Thank you for choosing KALYAN CRICKET TURF.
-
-Enjoy your game!`;
+      html = `
+        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+          <h2 style="color: #1b4332; margin-top: 0;">🏏 KALYAN CRICKET TURF</h2>
+          <p>Hello <strong>${customerName}</strong>,</p>
+          <p style="font-size: 16px; color: #1b4332;"><strong>Booking Confirmed ✅</strong></p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+          <p style="margin: 5px 0;">📅 <strong>Date:</strong> ${date}</p>
+          <p style="margin: 5px 0;">🕗 <strong>Time:</strong> ${time}</p>
+          <p style="margin: 5px 0;">⏱ <strong>Duration:</strong> ${duration}</p>
+          <p style="margin: 5px 0;">💰 <strong>Amount:</strong> ₹${amount}</p>
+          <p style="margin: 5px 0;">💳 <strong>Payment Method:</strong> ${paymentMethod}</p>
+          <p style="margin: 5px 0; font-size: 12px; color: #666;"><strong>Booking ID:</strong> ${bookingId}</p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+          <p>Thank you for choosing KALYAN CRICKET TURF. Enjoy your game!</p>
+        </div>
+      `;
     }
 
-    // 3. Dispatch using Nodemailer with Gmail OAuth2 configuration
-    const oauth2Client = new google.auth.OAuth2(
-      clientId,
-      clientSecret,
-      "http://localhost"
-    );
-
-    oauth2Client.setCredentials({
-      refresh_token: refreshToken
-    });
-
-    const accessTokenResponse = await oauth2Client.getAccessToken();
-
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        type: 'OAuth2',
-        user: userEmail,
-        clientId: clientId,
-        clientSecret: clientSecret,
-        refreshToken: refreshToken,
-        accessToken: accessTokenResponse.token
-      }
-    });
-
-    const sender = settings.smtpSenderEmail || userEmail;
-
-    const mailOptions = {
-      from: `KALYAN Cricket Turf <${sender}>`,
-      to: email,
-      subject: subject,
-      text: body
-    };
-
-    const info = await transporter.sendMail(mailOptions);
+    const info = await sendEmail(email, subject, html);
 
     // 4. Update log status to sent
     log.status = 'sent';

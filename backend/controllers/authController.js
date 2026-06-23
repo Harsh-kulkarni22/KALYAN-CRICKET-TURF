@@ -1,8 +1,7 @@
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
-import { google } from 'googleapis';
-import nodemailer from 'nodemailer';
+import { sendEmail } from '../utils/emailService.js';
 import User from '../models/User.js';
 import OTP from '../models/OTP.js';
 
@@ -69,50 +68,19 @@ export const sendOTP = async (req, res) => {
       expiresAt,
     });
 
-    // Create OAuth client
-    const oauth2Client = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET,
-      "http://localhost"
-    );
-
-    oauth2Client.setCredentials({
-      refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
-    });
-
-    // Generate access token
-    const accessToken = await oauth2Client.getAccessToken();
-
-    // Create transporter
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        type: "OAuth2",
-        user: process.env.EMAIL_USER,
-        clientId: process.env.GOOGLE_CLIENT_ID,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        refreshToken: process.env.GOOGLE_REFRESH_TOKEN,
-        accessToken: accessToken.token,
-      },
-    });
-
-    // Send email
-    await transporter.sendMail({
-      from: `"KALYAN Cricket Turf" <${process.env.EMAIL_USER}>`,
-      to: contact,
-      subject: "Turf Booking Login OTP",
-      text: `Your OTP is ${otp}. It will expire in 5 minutes.`,
-      html: `
-        <div style="font-family: Arial; padding:20px;">
-          <h2>KALYAN Cricket Turf</h2>
+    // Send email using shared emailService
+    await sendEmail(
+      contact,
+      "Turf Booking Login OTP",
+      `
+        <div style="font-family: Arial, sans-serif; padding: 20px; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 10px;">
+          <h2 style="color: #1b4332; margin-top: 0;">🏏 KALYAN Cricket Turf</h2>
           <p>Your OTP for login is:</p>
-          <h1>${otp}</h1>
+          <h1 style="color: #1b4332; font-size: 32px; letter-spacing: 2px; margin: 10px 0;">${otp}</h1>
           <p>This OTP will expire in 5 minutes.</p>
         </div>
-      `,
-    });
-
-    console.log("OTP email sent successfully");
+      `
+    );
 
     return res.status(200).json({
       message: "OTP sent successfully",
