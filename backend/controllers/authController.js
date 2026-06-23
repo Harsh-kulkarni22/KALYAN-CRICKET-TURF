@@ -7,7 +7,7 @@ import OTP from '../models/OTP.js';
 
 
 
-const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID1);
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const rateLimitMap = new Map();
 

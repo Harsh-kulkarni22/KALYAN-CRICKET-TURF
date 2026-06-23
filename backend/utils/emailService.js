@@ -1,62 +1,76 @@
 import { google } from "googleapis";
-import nodemailer from "nodemailer";
 
-export const sendEmail = async (to, subject, html) => {
-  console.log(`[Email Service] Preparing to send email to: ${to}, Subject: "${subject}"`);
+let oauth2Client;
+let gmail;
 
-  // Map GOOGLE_CLIENT_ID1/GOOGLE_CLIENT_SECRET1 if they exist (local development fallback)
-  const clientId = process.env.GOOGLE_CLIENT_ID1 || process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET1 || process.env.GOOGLE_CLIENT_SECRET;
-  const userEmail = process.env.EMAIL_USER;
-  const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
-
-  if (!userEmail || !clientId || !clientSecret || !refreshToken) {
-    console.error("[Email Service] Missing required environment variables for OAuth2 email sending.");
-    throw new Error("Missing required email environment variables.");
-  }
-
-  try {
-    const oauth2Client = new google.auth.OAuth2(
-      clientId,
-      clientSecret,
+const initGmailClient = () => {
+  if (!oauth2Client) {
+    oauth2Client = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
       "http://localhost"
     );
 
     oauth2Client.setCredentials({
-      refresh_token: refreshToken
+      refresh_token: process.env.GOOGLE_REFRESH_TOKEN
     });
 
-    console.log("[Email Service] Requesting dynamic access token...");
-    const accessTokenResponse = await oauth2Client.getAccessToken();
-    console.log("[Email Service] Dynamic access token successfully retrieved.");
+    gmail = google.gmail({
+      version: "v1",
+      auth: oauth2Client
+    });
+  }
+};
 
-    console.log("[Email Service] Initializing Nodemailer OAuth2 transporter...");
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        type: "OAuth2",
-        user: userEmail,
-        clientId: clientId,
-        clientSecret: clientSecret,
-        refreshToken: refreshToken,
-        accessToken: accessTokenResponse.token
+export const sendEmail = async (to, subject, html) => {
+  console.log("[Email Service] Preparing email");
+  initGmailClient();
+
+  try {
+    // Get access token automatically
+    await oauth2Client.getAccessToken();
+    console.log("[Email Service] Access token acquired");
+
+    const boundary = "boundary_string";
+    const plainText = html.replace(/<[^>]*>/g, '');
+
+    const messageParts = [
+      `From: "KALYAN Cricket Turf" <${process.env.EMAIL_USER}>`,
+      `To: ${to}`,
+      `Subject: =?utf-8?B?${Buffer.from(subject).toString('base64')}?=`,
+      `MIME-Version: 1.0`,
+      `Content-Type: multipart/alternative; boundary="${boundary}"`,
+      ``,
+      `--${boundary}`,
+      `Content-Type: text/plain; charset=utf-8`,
+      `Content-Transfer-Encoding: 7bit`,
+      ``,
+      plainText,
+      ``,
+      `--${boundary}`,
+      `Content-Type: text/html; charset=utf-8`,
+      `Content-Transfer-Encoding: 7bit`,
+      ``,
+      html,
+      ``,
+      `--${boundary}--`
+    ];
+
+    const message = messageParts.join('\r\n');
+    const encodedMessage = Buffer.from(message).toString('base64url');
+
+    console.log("[Email Service] Sending via Gmail API");
+    const result = await gmail.users.messages.send({
+      userId: "me",
+      requestBody: {
+        raw: encodedMessage
       }
     });
 
-    const mailOptions = {
-      from: `"KALYAN Cricket Turf" <${userEmail}>`,
-      to,
-      subject,
-      html,
-      text: html.replace(/<[^>]*>/g, '') // Strip HTML tags for plain text fallback
-    };
-
-    console.log("[Email Service] Sending email via Nodemailer...");
-    const info = await transporter.sendMail(mailOptions);
-    console.log(`[Email Service] Email successfully sent to ${to}. Message ID: ${info.messageId}`);
-    return info;
+    console.log("[Email Service] Email sent successfully");
+    return result.data;
   } catch (error) {
-    console.error(`[Email Service] Critical error sending email to ${to}:`, error.message);
+    console.error("[Email Service] Error:", error);
     throw error;
   }
 };
