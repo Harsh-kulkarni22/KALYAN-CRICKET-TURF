@@ -1,9 +1,12 @@
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
+import { google } from 'googleapis';
 import nodemailer from 'nodemailer';
 import User from '../models/User.js';
 import OTP from '../models/OTP.js';
+
+
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -28,6 +31,12 @@ const isRateLimited = (contact) => {
 };
 
 export const sendOTP = async (req, res) => {
+  if (process.env.GOOGLE_CLIENT_ID1) {
+    process.env.GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID1;
+  }
+  if (process.env.GOOGLE_CLIENT_SECRET1) {
+    process.env.GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET1;
+  }
   const { contact } = req.body;
   if (!contact) return res.status(400).json({ error: 'Contact (email or phone) is required' });
 
@@ -41,52 +50,111 @@ export const sendOTP = async (req, res) => {
       return res.status(400).json({ error: 'Mobile verifications are strictly restricted to Firebase! This API handles emails only.' });
     }
 
+    console.log("Request body:", req.body);
+    console.log("Contact:", contact);
+
     const otp = crypto.randomInt(100000, 999999).toString();
+    console.log("Generated OTP:", otp);
 
     await OTP.deleteOne({ contact });
 
     const expiresAt = new Date(Date.now() + 5 * 60000); // 5 minutes
-    await OTP.create({ contact, otp, expiresAt });
 
-    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-      const transporter = nodemailer.createTransport({
-        host: "smtp.gmail.com",
-        port: 587,
-        secure: false,
-        requireTLS: true,
-        family: 4,
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS
-        }
-      });
-      console.log("EMAIL USER =", process.env.EMAIL_USER);
-      console.log("EMAIL PASS EXISTS =", !!process.env.EMAIL_PASS);
-      console.log("Before verify");
-
-      try {
-        await transporter.verify();
-        console.log("SMTP VERIFIED");
-      } catch (err) {
-        console.log("VERIFY ERROR");
-        console.log(err);
-      }
-      await transporter.verify();
-      console.log("SMTP VERIFIED");
-      await transporter.sendMail({
-        from: process.env.EMAIL_USER || 'no-reply@turf.com',
-        to: contact,
-        subject: 'Turf Booking Login OTP',
-        text: `Your OTP for Turf Booking login is: ${otp}. It expires in 5 minutes.`
-      });
-    } else {
-      console.log(`[DEV MODE - Missing Nodemailer ENV] Email OTP for ${contact}: ${otp}`);
+    try {
+      await OTP.create({ contact, otp, expiresAt });
+      console.log("OTP saved to MongoDB");
+    } catch (error) {
+      console.error("OTP CREATE ERROR:", error);
+      throw error;
     }
 
-    res.status(200).json({ message: 'OTP sent successfully' });
+    console.log("EMAIL_USER:", process.env.EMAIL_USER);
+    console.log("CLIENT_ID exists:", !!process.env.GOOGLE_CLIENT_ID);
+    console.log("CLIENT_SECRET exists:", !!process.env.GOOGLE_CLIENT_SECRET);
+    console.log("REFRESH_TOKEN exists:", !!process.env.GOOGLE_REFRESH_TOKEN);
+
+    console.log(!!process.env.EMAIL_USER);
+    console.log(!!process.env.GOOGLE_CLIENT_ID);
+    console.log(!!process.env.GOOGLE_CLIENT_SECRET);
+    console.log(!!process.env.GOOGLE_REFRESH_TOKEN);
+
+    if (
+      process.env.EMAIL_USER &&
+      process.env.GOOGLE_CLIENT_ID &&
+      process.env.GOOGLE_CLIENT_SECRET &&
+      process.env.GOOGLE_REFRESH_TOKEN
+    ) {
+      console.log("Creating OAuth client...");
+      const oauth2Client = new google.auth.OAuth2(
+        process.env.GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_CLIENT_SECRET,
+        "http://localhost"
+      );
+
+      oauth2Client.setCredentials({
+        refresh_token: process.env.GOOGLE_REFRESH_TOKEN
+      });
+
+      console.log("Generating access token...");
+      let accessTokenResponse;
+      try {
+        accessTokenResponse = await oauth2Client.getAccessToken();
+        console.log("Access token generated");
+      } catch (error) {
+        console.error("GET ACCESS TOKEN ERROR:", error);
+        throw error;
+      }
+
+      console.log("Creating transporter...");
+      let transporter;
+      try {
+        transporter = nodemailer.createTransport({
+          service: "gmail",
+          auth: {
+            type: "OAuth2",
+            user: process.env.EMAIL_USER,
+            clientId: process.env.GOOGLE_CLIENT_ID,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+            refreshToken: process.env.GOOGLE_REFRESH_TOKEN,
+            accessToken: accessTokenResponse.token
+          }
+        });
+      } catch (error) {
+        console.error("CREATE TRANSPORTER ERROR:", error);
+        throw error;
+      }
+
+      console.log("Sending email...");
+      try {
+        await transporter.sendMail({
+          from: process.env.EMAIL_USER,
+          to: contact,
+          subject: "Turf Booking Login OTP",
+          text: `Your OTP for Turf Booking login is: ${otp}. It expires in 5 minutes.`
+        });
+        console.log("Email sent successfully");
+      } catch (error) {
+        console.error("SEND MAIL ERROR:", error);
+        throw error;
+      }
+
+      return res.status(200).json({
+        message: "OTP sent successfully"
+      });
+    } else {
+      console.log(
+        `[DEV MODE] Email OTP for ${contact}: ${otp}`
+      );
+      return res.status(200).json({
+        message: "OTP generated in DEV mode (check logs)"
+      });
+    }
   } catch (error) {
     console.error("OTP Delivery Error:", error);
-    res.status(500).json({ error: 'Failed to send OTP' });
+    return res.status(500).json({
+      error: error.message,
+      stack: error.stack
+    });
   }
 };
 

@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { google } from 'googleapis';
 import Settings from '../models/Settings.js';
 import EmailLog from '../models/EmailLog.js';
 
@@ -28,10 +29,12 @@ export const sendEmailNotification = async ({
     }
 
     const userEmail = process.env.EMAIL_USER;
-    const passEmail = process.env.EMAIL_PASS;
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
 
-    if (!userEmail || !passEmail) {
-      console.log("[Email] Skipped: Nodemailer credentials (EMAIL_USER/EMAIL_PASS) are not defined in environment.");
+    if (!userEmail || !clientId || !clientSecret || !refreshToken) {
+      console.log("[Email] Skipped: Nodemailer OAuth2 credentials (EMAIL_USER, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN) are not defined in environment.");
       return;
     }
 
@@ -103,12 +106,28 @@ Thank you for choosing KALYAN CRICKET TURF.
 Enjoy your game!`;
     }
 
-    // 3. Dispatch using Nodemailer with Gmail service configuration
+    // 3. Dispatch using Nodemailer with Gmail OAuth2 configuration
+    const oauth2Client = new google.auth.OAuth2(
+      clientId,
+      clientSecret,
+      "http://localhost"
+    );
+
+    oauth2Client.setCredentials({
+      refresh_token: refreshToken
+    });
+
+    const accessTokenResponse = await oauth2Client.getAccessToken();
+
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
+        type: 'OAuth2',
         user: userEmail,
-        pass: passEmail
+        clientId: clientId,
+        clientSecret: clientSecret,
+        refreshToken: refreshToken,
+        accessToken: accessTokenResponse.token
       }
     });
 
