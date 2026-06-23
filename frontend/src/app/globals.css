@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+@theme {
+  --color-playoGreen: #00B156;
+  --color-playoGreenHover: #009c4c;
+  --color-darkText: #1A202C;
+  --color-lightGray: #F7FAFC;
+  --color-borderGray: #E2E8F0;
+}
+
+@layer base {
+  body {
+    @apply bg-lightGray text-darkText font-sans select-none antialiased;
+  }
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+/* Hide scrollbar for IE, Edge and Firefox */
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
