@@ -8,7 +8,7 @@ import OTP from '../models/OTP.js';
 
 
 
-const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID1);
 
 const rateLimitMap = new Map();
 
@@ -68,26 +68,26 @@ export const sendOTP = async (req, res) => {
       throw error;
     }
 
-    console.log("EMAIL_USER:", process.env.EMAIL_USER);
-    console.log("CLIENT_ID exists:", !!process.env.GOOGLE_CLIENT_ID);
-    console.log("CLIENT_SECRET exists:", !!process.env.GOOGLE_CLIENT_SECRET);
-    console.log("REFRESH_TOKEN exists:", !!process.env.GOOGLE_REFRESH_TOKEN);
+    console.log("EMAIL_USER:", process.env.EMAIL_USER1);
+    console.log("CLIENT_ID exists:", !!process.env.GOOGLE_CLIENT_ID1);
+    console.log("CLIENT_SECRET exists:", !!process.env.GOOGLE_CLIENT_SECRET1);
+    console.log("REFRESH_TOKEN exists:", !!process.env.GOOGLE_REFRESH_TOKEN1);
 
-    console.log(!!process.env.EMAIL_USER);
-    console.log(!!process.env.GOOGLE_CLIENT_ID);
-    console.log(!!process.env.GOOGLE_CLIENT_SECRET);
+    console.log(!!process.env.EMAIL_USER1);
+    console.log(!!process.env.GOOGLE_CLIENT_ID1);
+    console.log(!!process.env.GOOGLE_CLIENT_SECRET1);
     console.log(!!process.env.GOOGLE_REFRESH_TOKEN);
 
     if (
-      process.env.EMAIL_USER &&
-      process.env.GOOGLE_CLIENT_ID &&
-      process.env.GOOGLE_CLIENT_SECRET &&
-      process.env.GOOGLE_REFRESH_TOKEN
+      process.env.EMAIL_USER1 &&
+      process.env.GOOGLE_CLIENT_ID1 &&
+      process.env.GOOGLE_CLIENT_SECRET1 &&
+      process.env.GOOGLE_REFRESH_TOKEN1
     ) {
       console.log("Creating OAuth client...");
       const oauth2Client = new google.auth.OAuth2(
-        process.env.GOOGLE_CLIENT_ID,
-        process.env.GOOGLE_CLIENT_SECRET,
+        process.env.GOOGLE_CLIENT_ID1,
+        process.env.GOOGLE_CLIENT_SECRET1,
         "http://localhost"
       );
 
@@ -112,9 +112,9 @@ export const sendOTP = async (req, res) => {
           service: "gmail",
           auth: {
             type: "OAuth2",
-            user: process.env.EMAIL_USER,
-            clientId: process.env.GOOGLE_CLIENT_ID,
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+            user: process.env.EMAIL_USER1,
+            clientId: process.env.GOOGLE_CLIENT_ID1,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET1,
             refreshToken: process.env.GOOGLE_REFRESH_TOKEN,
             accessToken: accessTokenResponse.token
           }
