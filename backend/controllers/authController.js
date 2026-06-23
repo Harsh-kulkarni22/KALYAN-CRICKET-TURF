@@ -54,6 +54,7 @@ export const sendOTP = async (req, res) => {
         port: 587,
         secure: false,
         requireTLS: true,
+        family: 4,
         auth: {
           user: process.env.EMAIL_USER,
           pass: process.env.EMAIL_PASS
@@ -61,6 +62,15 @@ export const sendOTP = async (req, res) => {
       });
       console.log("EMAIL USER =", process.env.EMAIL_USER);
       console.log("EMAIL PASS EXISTS =", !!process.env.EMAIL_PASS);
+      console.log("Before verify");
+
+      try {
+        await transporter.verify();
+        console.log("SMTP VERIFIED");
+      } catch (err) {
+        console.log("VERIFY ERROR");
+        console.log(err);
+      }
       await transporter.verify();
       console.log("SMTP VERIFIED");
       await transporter.sendMail({
