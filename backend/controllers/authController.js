@@ -31,132 +31,101 @@ const isRateLimited = (contact) => {
 };
 
 export const sendOTP = async (req, res) => {
-  if (process.env.GOOGLE_CLIENT_ID1) {
-    process.env.GOOGLE_CLIENT_ID1 = process.env.GOOGLE_CLIENT_ID1;
-  }
-  if (process.env.GOOGLE_CLIENT_SECRET1) {
-    process.env.GOOGLE_CLIENT_SECRET1 = process.env.GOOGLE_CLIENT_SECRET1;
-  }
   const { contact } = req.body;
-  if (!contact) return res.status(400).json({ error: 'Contact (email or phone) is required' });
+
+  if (!contact) {
+    return res.status(400).json({
+      error: "Contact is required",
+    });
+  }
 
   try {
     if (isRateLimited(contact)) {
-      return res.status(429).json({ error: 'Too many requests. Please try again after a minute.' });
+      return res.status(429).json({
+        error: "Too many requests. Please try again later.",
+      });
     }
 
-    const isEmail = contact.includes('@');
+    const isEmail = contact.includes("@");
+
     if (!isEmail) {
-      return res.status(400).json({ error: 'Mobile verifications are strictly restricted to Firebase! This API handles emails only.' });
+      return res.status(400).json({
+        error: "Only email OTP is supported.",
+      });
     }
 
-    console.log("Request body:", req.body);
-    console.log("Contact:", contact);
-
+    // Generate OTP
     const otp = crypto.randomInt(100000, 999999).toString();
-    console.log("Generated OTP:", otp);
 
+    // Remove previous OTP
     await OTP.deleteOne({ contact });
 
-    const expiresAt = new Date(Date.now() + 5 * 60000); // 5 minutes
+    // Save new OTP
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
-    try {
-      await OTP.create({ contact, otp, expiresAt });
-      console.log("OTP saved to MongoDB");
-    } catch (error) {
-      console.error("OTP CREATE ERROR:", error);
-      throw error;
-    }
+    await OTP.create({
+      contact,
+      otp,
+      expiresAt,
+    });
 
-    console.log("EMAIL_USER:", process.env.EMAIL_USER1);
-    console.log("CLIENT_ID exists:", !!process.env.GOOGLE_CLIENT_ID1);
-    console.log("CLIENT_SECRET exists:", !!process.env.GOOGLE_CLIENT_SECRET1);
-    console.log("REFRESH_TOKEN exists:", !!process.env.GOOGLE_REFRESH_TOKEN1);
+    // Create OAuth client
+    const oauth2Client = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      "http://localhost"
+    );
 
-    console.log(!!process.env.EMAIL_USER1);
-    console.log(!!process.env.GOOGLE_CLIENT_ID1);
-    console.log(!!process.env.GOOGLE_CLIENT_SECRET1);
-    console.log(!!process.env.GOOGLE_REFRESH_TOKEN);
+    oauth2Client.setCredentials({
+      refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
+    });
 
-    if (
-      process.env.EMAIL_USER1 &&
-      process.env.GOOGLE_CLIENT_ID1 &&
-      process.env.GOOGLE_CLIENT_SECRET1 &&
-      process.env.GOOGLE_REFRESH_TOKEN1
-    ) {
-      console.log("Creating OAuth client...");
-      const oauth2Client = new google.auth.OAuth2(
-        process.env.GOOGLE_CLIENT_ID1,
-        process.env.GOOGLE_CLIENT_SECRET1,
-        "http://localhost"
-      );
+    // Generate access token
+    const accessToken = await oauth2Client.getAccessToken();
 
-      oauth2Client.setCredentials({
-        refresh_token: process.env.GOOGLE_REFRESH_TOKEN
-      });
+    // Create transporter
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        type: "OAuth2",
+        user: process.env.EMAIL_USER,
+        clientId: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        refreshToken: process.env.GOOGLE_REFRESH_TOKEN,
+        accessToken: accessToken.token,
+      },
+    });
 
-      console.log("Generating access token...");
-      let accessTokenResponse;
-      try {
-        accessTokenResponse = await oauth2Client.getAccessToken();
-        console.log("Access token generated");
-      } catch (error) {
-        console.error("GET ACCESS TOKEN ERROR:", error);
-        throw error;
-      }
+    // Send email
+    await transporter.sendMail({
+      from: `"KALYAN Cricket Turf" <${process.env.EMAIL_USER}>`,
+      to: contact,
+      subject: "Turf Booking Login OTP",
+      text: `Your OTP is ${otp}. It will expire in 5 minutes.`,
+      html: `
+        <div style="font-family: Arial; padding:20px;">
+          <h2>KALYAN Cricket Turf</h2>
+          <p>Your OTP for login is:</p>
+          <h1>${otp}</h1>
+          <p>This OTP will expire in 5 minutes.</p>
+        </div>
+      `,
+    });
 
-      console.log("Creating transporter...");
-      let transporter;
-      try {
-        transporter = nodemailer.createTransport({
-          service: "gmail",
-          auth: {
-            type: "OAuth2",
-            user: process.env.EMAIL_USER1,
-            clientId: process.env.GOOGLE_CLIENT_ID1,
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET1,
-            refreshToken: process.env.GOOGLE_REFRESH_TOKEN,
-            accessToken: accessTokenResponse.token
-          }
-        });
-      } catch (error) {
-        console.error("CREATE TRANSPORTER ERROR:", error);
-        throw error;
-      }
+    console.log("OTP email sent successfully");
 
-      console.log("Sending email...");
-      try {
-        await transporter.sendMail({
-          from: process.env.EMAIL_USER,
-          to: contact,
-          subject: "Turf Booking Login OTP",
-          text: `Your OTP for Turf Booking login is: ${otp}. It expires in 5 minutes.`
-        });
-        console.log("Email sent successfully");
-      } catch (error) {
-        console.error("SEND MAIL ERROR:", error);
-        throw error;
-      }
-
-      return res.status(200).json({
-        message: "OTP sent successfully"
-      });
-    } else {
-      console.log(
-        `[DEV MODE] Email OTP for ${contact}: ${otp}`
-      );
-      return res.status(200).json({
-        message: "OTP generated in DEV mode (check logs)"
-      });
-    }
+    return res.status(200).json({
+      message: "OTP sent successfully",
+    });
   } catch (error) {
     console.error("OTP Delivery Error:", error);
+
     return res.status(500).json({
       error: error.message,
-      stack: error.stack
     });
   }
 };
+
 
 export const verifyOTP = async (req, res) => {
   const { contact, otp, name } = req.body;
