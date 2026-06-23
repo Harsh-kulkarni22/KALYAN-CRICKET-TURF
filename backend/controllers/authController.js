@@ -32,10 +32,10 @@ const isRateLimited = (contact) => {
 
 export const sendOTP = async (req, res) => {
   if (process.env.GOOGLE_CLIENT_ID1) {
-    process.env.GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID1;
+    process.env.GOOGLE_CLIENT_ID1 = process.env.GOOGLE_CLIENT_ID1;
   }
   if (process.env.GOOGLE_CLIENT_SECRET1) {
-    process.env.GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET1;
+    process.env.GOOGLE_CLIENT_SECRET1 = process.env.GOOGLE_CLIENT_SECRET1;
   }
   const { contact } = req.body;
   if (!contact) return res.status(400).json({ error: 'Contact (email or phone) is required' });
