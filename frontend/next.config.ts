@@ -9,6 +9,11 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  experimental: {
+    // Limit workers to avoid memory exhaustion (OOM Zone Allocation errors) on resource-constrained systems
+    cpus: 1,
+    workerThreads: false,
+  },
 };
 
 export default nextConfig;

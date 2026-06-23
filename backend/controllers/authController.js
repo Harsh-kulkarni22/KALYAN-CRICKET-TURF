@@ -15,13 +15,13 @@ const isRateLimited = (contact) => {
     rateLimitMap.set(contact, [now]);
     return false;
   }
-  
+
   const requests = rateLimitMap.get(contact).filter(time => now - time < 60000);
   if (requests.length >= 3) {
     rateLimitMap.set(contact, requests);
-    return true; 
+    return true;
   }
-  
+
   requests.push(now);
   rateLimitMap.set(contact, requests);
   return false;
@@ -42,20 +42,27 @@ export const sendOTP = async (req, res) => {
     }
 
     const otp = crypto.randomInt(100000, 999999).toString();
-    
+
     await OTP.deleteOne({ contact });
-    
+
     const expiresAt = new Date(Date.now() + 5 * 60000); // 5 minutes
     await OTP.create({ contact, otp, expiresAt });
-    
+
     if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
       const transporter = nodemailer.createTransport({
-        service: 'gmail',
+        host: "smtp.gmail.com",
+        port: 587,
+        secure: false,
+        requireTLS: true,
         auth: {
           user: process.env.EMAIL_USER,
           pass: process.env.EMAIL_PASS
         }
       });
+      console.log("EMAIL USER =", process.env.EMAIL_USER);
+      console.log("EMAIL PASS EXISTS =", !!process.env.EMAIL_PASS);
+      await transporter.verify();
+      console.log("SMTP VERIFIED");
       await transporter.sendMail({
         from: process.env.EMAIL_USER || 'no-reply@turf.com',
         to: contact,
@@ -80,19 +87,19 @@ export const verifyOTP = async (req, res) => {
   try {
     const isEmail = contact.includes('@');
     if (!isEmail) {
-       return res.status(400).json({ error: 'Backend OTP confirmation is disabled for phones.' });
+      return res.status(400).json({ error: 'Backend OTP confirmation is disabled for phones.' });
     }
 
     const record = await OTP.findOne({ contact, otp });
     if (!record) return res.status(400).json({ error: 'Invalid or expired OTP' });
     if (record.expiresAt < new Date()) {
-        await OTP.deleteOne({ _id: record._id });
-        return res.status(400).json({ error: 'OTP expired' });
+      await OTP.deleteOne({ _id: record._id });
+      return res.status(400).json({ error: 'OTP expired' });
     }
 
     // Find or create user
     let user = await User.findOne({ $or: [{ email: contact }, { phone: contact }] });
-    
+
     if (user && user.isBlocked) {
       return res.status(403).json({ error: 'Your account has been blocked. Please contact admin.' });
     }
@@ -198,7 +205,7 @@ export const firebaseLogin = async (req, res) => {
     if (user && user.isBlocked) {
       return res.status(403).json({ error: 'Your account has been blocked. Please contact admin.' });
     }
-    
+
     if (!user) {
       if (!name) return res.status(200).json({ needsProfile: true });
       const isAdmin = process.env.ADMIN_CONTACT && (phone === process.env.ADMIN_CONTACT);

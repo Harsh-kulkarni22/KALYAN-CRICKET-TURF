@@ -57,7 +57,7 @@ export default function Payment() {
 
       // 3. Handle Razorpay
       const options = {
-        key: "rzp_test_SgC5jsuWbudaSa", // Replace with real key in frontend env
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_SgC5jsuWbudaSa",
         amount: data.amount,
         currency: "INR",
         name: "KALYAN cricket turf",
