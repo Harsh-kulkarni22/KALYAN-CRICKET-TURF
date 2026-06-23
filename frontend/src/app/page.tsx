@@ -40,7 +40,7 @@ export default function Home() {
   const [feedback, setFeedback] = useState("");
   const [displayRating, setDisplayRating] = useState(0);
   const [ratingCount, setRatingCount] = useState(0);
-  
+
   // Reviews additions
   const [reviews, setReviews] = useState<ReviewItem[]>([]);
   const [distribution, setDistribution] = useState<{ [key: number]: number }>({
@@ -82,7 +82,7 @@ export default function Home() {
           const dist = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
           (data.reviews || []).forEach((r: any) => {
             if (r.rating >= 1 && r.rating <= 5) {
-              dist[r.rating as 1|2|3|4|5] += 1;
+              dist[r.rating as 1 | 2 | 3 | 4 | 5] += 1;
             }
           });
           setDistribution(dist);
@@ -136,7 +136,7 @@ export default function Home() {
         if (data) setSettings(data);
       })
       .catch(err => console.error("Error fetching settings:", err));
-    
+
     fetchReviewsData();
   }, []);
 
@@ -163,7 +163,7 @@ export default function Home() {
       toast.error("Please select a rating");
       return;
     }
-    
+
     try {
       const token = localStorage.getItem("turf_token");
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/reviews`, {
@@ -330,7 +330,7 @@ export default function Home() {
                           <div className="w-8 h-8 rounded-full bg-playoGreen/15 flex items-center justify-center font-bold text-xs text-playoGreen shrink-0 border border-playoGreen/10 uppercase">
                             {r.userId?.name?.charAt(0) || "?"}
                           </div>
-                          
+
                           {/* Card Content */}
                           <div className="flex-1 min-w-0 space-y-1">
                             <div className="flex justify-between items-baseline gap-2">
@@ -341,7 +341,7 @@ export default function Home() {
                                 {formattedDate}
                               </span>
                             </div>
-                            
+
                             {/* Stars */}
                             <div className="flex gap-0.5">
                               {[1, 2, 3, 4, 5].map((star) => (
@@ -404,7 +404,7 @@ export default function Home() {
                 Pratapur Basavakalyan Road, Basavakalyan, Bidar, Karnataka
               </p>
               <div className="mt-4 w-full h-[250px] bg-gray-200 rounded-2xl relative overflow-hidden shadow-inner border border-gray-50">
-                <iframe src={settings.googleMapsLink || "https://www.google.com/maps/embed?pb=!1m10!1m8!1m3!1d268.3567641765004!2d76.93425571509765!3d17.877031986034797!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sin!4v1776712041816!5m2!1sen!2sin"} width="100%" height="100%" style={{ border: 0 }} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade"></iframe>
+                <iframe src={settings.googleMapsLink || "https://www.google.com/maps/embed?pb=!1m13!1m8!1m3!1d949.2950158414587!2d76.934256!3d17.877032!3m2!1i1024!2i768!4f13.1!3m2!1m1!2s!5e0!3m2!1sen!2sin!4v1782214393851!5m2!1sen!2sin"} width="100%" height="100%" style={{ border: 0 }} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade"></iframe>
               </div>
             </div>
 
