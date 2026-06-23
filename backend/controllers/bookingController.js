@@ -39,10 +39,11 @@ export const checkAvailability = async (req, res) => {
 };
 
 export const createBooking = async (req, res) => {
-  const { date, startTime, duration, paymentMethod } = req.body;
+  const { date, startTime, duration } = req.body;
+  const paymentMethod = "cash"; // TEMPORARY ONLINE PAYMENT DISABLE MODE - Force cash
   const userId = req.user.id;
 
-  if (!date || !startTime || !duration || !paymentMethod) {
+  if (!date || !startTime || !duration) {
     return res.status(400).json({ error: 'All fields are required' });
   }
 
@@ -63,13 +64,15 @@ export const createBooking = async (req, res) => {
       await settings.save();
     }
 
-    // Check payment method enablement
+    // Check payment method enablement (Bypassed for temporary cash-only mode)
+    /*
     if (paymentMethod === 'cash' && !settings.cashPaymentEnabled) {
       return res.status(400).json({ error: 'Cash payment is currently disabled by admin.' });
     }
     if (paymentMethod === 'online' && !settings.onlinePaymentEnabled) {
       return res.status(400).json({ error: 'Online payment is currently disabled by admin.' });
     }
+    */
 
     // Check maximum booking duration
     if (duration > settings.maxBookingDuration) {
@@ -139,6 +142,7 @@ export const createBooking = async (req, res) => {
       return res.status(201).json({ message: 'Booking Successful', booking });
     }
 
+    /* TEMPORARILY DISABLED ONLINE PAYMENT FLOW
     // 5. Initiate Online Payment Configuration
     const razorpay = new Razorpay({
       key_id: process.env.RAZORPAY_KEY_ID,
@@ -174,6 +178,7 @@ export const createBooking = async (req, res) => {
       amount: order.amount,
       bookingId: booking._id
     });
+    */
 
   } catch (error) {
     console.error('Create booking error:', error);

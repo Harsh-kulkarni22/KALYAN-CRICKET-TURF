@@ -9,7 +9,7 @@ import Script from "next/script";
 export default function Payment() {
   const router = useRouter();
   const [bookingData, setBookingData] = useState<any>(null);
-  const [paymentMethod, setPaymentMethod] = useState("online"); // 'online' | 'cash'
+  const [paymentMethod, setPaymentMethod] = useState("cash"); // 'online' | 'cash' (Defaulted to cash for TEMPORARY DISABLE mode)
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -55,6 +55,7 @@ export default function Payment() {
         return;
       }
 
+      /* TEMPORARILY DISABLED RAZORPAY CHECKOUT FLOW
       // 3. Handle Razorpay
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_SgC5jsuWbudaSa",
@@ -103,6 +104,7 @@ export default function Payment() {
         setLoading(false);
       });
       rzp.open();
+      */
 
     } catch (err) {
       toast.error("Something went wrong");
@@ -115,7 +117,7 @@ export default function Payment() {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 pb-24">
-      <Script src="https://checkout.razorpay.com/v1/checkout.js" />
+      {/* <Script src="https://checkout.razorpay.com/v1/checkout.js" /> */}
 
       {/* Header */}
       <div className="flex items-center p-4 bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
@@ -156,6 +158,7 @@ export default function Payment() {
             <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
               <h2 className="font-bold text-md text-[#2A364E] mb-3">Payment Options</h2>
               <div className="space-y-3">
+                {/* TEMPORARILY DISABLED
                 <label className={`flex items-center gap-3 p-3 border rounded-xl cursor-pointer transition ${paymentMethod === 'online' ? 'border-playoGreen bg-green-50/40' : 'border-gray-200'}`}>
                   <input type="radio" name="payment" checked={paymentMethod === 'online'} onChange={() => setPaymentMethod('online')} className="accent-playoGreen w-4 h-4" />
                   <div>
@@ -163,6 +166,7 @@ export default function Payment() {
                     <div className="text-xs text-gray-500 font-medium">Razorpay (UPI, Card, NetBanking)</div>
                   </div>
                 </label>
+                */}
                 <label className={`flex items-center gap-3 p-3 border rounded-xl cursor-pointer transition ${paymentMethod === 'cash' ? 'border-playoGreen bg-green-50/40' : 'border-gray-200'}`}>
                   <input type="radio" name="payment" checked={paymentMethod === 'cash'} onChange={() => setPaymentMethod('cash')} className="accent-playoGreen w-4 h-4" />
                   <div>
@@ -195,7 +199,7 @@ export default function Payment() {
               disabled={loading}
               className="w-full py-4 bg-playoGreen hover:bg-playoGreenHover text-white font-bold rounded-xl text-center shadow-lg shadow-green-600/10 hover:shadow-green-600/20 active:scale-[0.98] transition flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              {loading ? "Processing Payment..." : `Proceed & Pay ₹${bookingData.totalCost}`}
+              {loading ? "Confirming Booking..." : `Confirm Booking`}
             </button>
           </div>
 
@@ -209,7 +213,7 @@ export default function Payment() {
           disabled={loading}
           className="w-full bg-playoGreen text-white font-bold py-3.5 rounded-xl active:scale-95 transition flex justify-center items-center gap-2 disabled:opacity-50"
         >
-          {loading ? "Processing..." : `Proceed & Pay ₹${bookingData.totalCost}`}
+          {loading ? "Confirming..." : `Confirm Booking`}
         </button>
       </div>
 

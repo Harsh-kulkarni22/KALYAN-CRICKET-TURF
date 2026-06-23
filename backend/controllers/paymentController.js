@@ -19,6 +19,9 @@ const checkOverlap = (start1, dur1, start2, dur2) => {
 };
 
 export const verifyPayment = async (req, res) => {
+  return res.status(400).json({ error: 'Online payment is temporarily disabled.' });
+
+  /* TEMPORARILY DISABLED
   const { razorpay_order_id, razorpay_payment_id, razorpay_signature, bookingData } = req.body;
   const userId = req.user.id;
 
@@ -111,4 +114,5 @@ export const verifyPayment = async (req, res) => {
     console.error('Verify payment error:', error);
     res.status(500).json({ error: 'Payment verification failed' });
   }
+  */
 };
