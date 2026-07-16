@@ -40,8 +40,7 @@ export const checkAvailability = async (req, res) => {
 };
 
 export const createBooking = async (req, res) => {
-  const { date, startTime, duration } = req.body;
-  const paymentMethod = "cash"; // TEMPORARY ONLINE PAYMENT DISABLE MODE - Force cash
+  const { date, startTime, duration, paymentMethod = 'cash' } = req.body;
   const userId = req.user.id;
 
   if (!date || !startTime || !duration) {
@@ -65,15 +64,13 @@ export const createBooking = async (req, res) => {
       await settings.save();
     }
 
-    // Check payment method enablement (Bypassed for temporary cash-only mode)
-    /*
+    // Check payment method enablement
     if (paymentMethod === 'cash' && !settings.cashPaymentEnabled) {
       return res.status(400).json({ error: 'Cash payment is currently disabled by admin.' });
     }
     if (paymentMethod === 'online' && !settings.onlinePaymentEnabled) {
       return res.status(400).json({ error: 'Online payment is currently disabled by admin.' });
     }
-    */
 
     // Check maximum booking duration
     if (duration > settings.maxBookingDuration) {
@@ -148,43 +145,47 @@ export const createBooking = async (req, res) => {
       return res.status(201).json({ message: 'Booking Successful', booking });
     }
 
-    /* TEMPORARILY DISABLED ONLINE PAYMENT FLOW
     // 5. Initiate Online Payment Configuration
-    const razorpay = new Razorpay({
-      key_id: process.env.RAZORPAY_KEY_ID,
-      key_secret: process.env.RAZORPAY_KEY_SECRET,
-    });
+    if (paymentMethod === 'online') {
+      if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+        return res.status(500).json({ error: 'Razorpay credentials not configured on server' });
+      }
 
-    const options = {
-      amount: totalAmount * 100, // in paisa
-      currency: "INR",
-      receipt: `rcpt_${Date.now().toString().slice(-6)}_${userId.toString().slice(-6)}`,
-    };
+      const razorpay = new Razorpay({
+        key_id: process.env.RAZORPAY_KEY_ID,
+        key_secret: process.env.RAZORPAY_KEY_SECRET,
+      });
 
-    const order = await razorpay.orders.create(options);
+      const options = {
+        amount: totalAmount * 100, // in paisa
+        currency: "INR",
+        receipt: `rcpt_${Date.now().toString().slice(-6)}_${userId.toString().slice(-6)}`,
+      };
 
-    // Create locked booking in database
-    const booking = new Booking({
-      userId,
-      date,
-      startTime,
-      duration,
-      totalAmount,
-      paymentMethod: 'online',
-      paymentStatus: 'pending',
-      bookingStatus: 'locked',
-      lockedUntil: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes timeout
-      razorpayOrderId: order.id
-    });
-    await booking.save();
+      const order = await razorpay.orders.create(options);
 
-    res.status(201).json({
-      message: 'Order created and slot locked',
-      orderId: order.id,
-      amount: order.amount,
-      bookingId: booking._id
-    });
-    */
+      // Create locked booking in database
+      const booking = new Booking({
+        userId,
+        date,
+        startTime,
+        duration,
+        totalAmount,
+        paymentMethod: 'online',
+        paymentStatus: 'pending',
+        bookingStatus: 'locked',
+        lockedUntil: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes timeout
+        razorpayOrderId: order.id
+      });
+      await booking.save();
+
+      return res.status(201).json({
+        message: 'Order created and slot locked',
+        orderId: order.id,
+        amount: order.amount,
+        bookingId: booking._id
+      });
+    }
 
   } catch (error) {
     console.error('Create booking error:', error);

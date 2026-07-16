@@ -55,10 +55,16 @@ export default function Payment() {
         return;
       }
 
-      /* TEMPORARILY DISABLED RAZORPAY CHECKOUT FLOW
       // 3. Handle Razorpay
+      const rzpKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+      if (!rzpKey) {
+        toast.error("Razorpay Key ID is not configured on client.");
+        setLoading(false);
+        return;
+      }
+
       const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_SgC5jsuWbudaSa",
+        key: rzpKey,
         amount: data.amount,
         currency: "INR",
         name: "KALYAN cricket turf",
@@ -86,7 +92,7 @@ export default function Payment() {
             localStorage.removeItem("pending_booking");
             router.push("/success");
           } else {
-            toast.error("Payment Verification Failed");
+            toast.error(verifyData.error || "Payment Verification Failed");
           }
         },
         prefill: {
@@ -95,6 +101,36 @@ export default function Payment() {
         },
         theme: {
           color: "#00B156"
+        },
+        modal: {
+          ondismiss: async function () {
+            setLoading(true);
+            try {
+              const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/payments/cancel`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                  bookingId: data.bookingId
+                })
+              });
+              const cancelData = await res.json();
+              if (res.ok && cancelData.success && cancelData.bookingReleased) {
+                toast.success("Payment cancelled. Your booking slot has been released.", { duration: 5000 });
+              } else {
+                toast.error("Payment cancelled. If the slot is not released immediately, it will automatically become available within 5 minutes.", { duration: 6000 });
+              }
+            } catch (err) {
+              console.error("Error calling cancel API:", err);
+              toast.error("Payment cancelled. If the slot is not released immediately, it will automatically become available within 5 minutes.", { duration: 6000 });
+            } finally {
+              setLoading(false);
+              localStorage.removeItem("pending_booking");
+              router.push("/book");
+            }
+          }
         }
       };
 
@@ -104,10 +140,10 @@ export default function Payment() {
         setLoading(false);
       });
       rzp.open();
-      */
 
     } catch (err) {
       toast.error("Something went wrong");
+      setLoading(false);
     } finally {
       if (paymentMethod === 'cash') setLoading(false);
     }
@@ -122,7 +158,7 @@ export default function Payment() {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 pb-24">
-      {/* <Script src="https://checkout.razorpay.com/v1/checkout.js" /> */}
+      <Script src="https://checkout.razorpay.com/v1/checkout.js" />
 
       {/* Header */}
       <div className="flex items-center p-4 bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
@@ -190,7 +226,6 @@ export default function Payment() {
             <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
               <h2 className="font-bold text-md text-[#2A364E] mb-3">Payment Options</h2>
               <div className="space-y-3">
-                {/* TEMPORARILY DISABLED
                 <label className={`flex items-center gap-3 p-3 border rounded-xl cursor-pointer transition ${paymentMethod === 'online' ? 'border-playoGreen bg-green-50/40' : 'border-gray-200'}`}>
                   <input type="radio" name="payment" checked={paymentMethod === 'online'} onChange={() => setPaymentMethod('online')} className="accent-playoGreen w-4 h-4" />
                   <div>
@@ -198,7 +233,6 @@ export default function Payment() {
                     <div className="text-xs text-gray-500 font-medium">Razorpay (UPI, Card, NetBanking)</div>
                   </div>
                 </label>
-                */}
                 <label className={`flex items-center gap-3 p-3 border rounded-xl cursor-pointer transition ${paymentMethod === 'cash' ? 'border-playoGreen bg-green-50/40' : 'border-gray-200'}`}>
                   <input type="radio" name="payment" checked={paymentMethod === 'cash'} onChange={() => setPaymentMethod('cash')} className="accent-playoGreen w-4 h-4" />
                   <div>
@@ -243,7 +277,9 @@ export default function Payment() {
               disabled={loading}
               className="w-full py-4 bg-playoGreen hover:bg-playoGreenHover text-white font-bold rounded-xl text-center shadow-lg shadow-green-600/10 hover:shadow-green-600/20 active:scale-[0.98] transition flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              {loading ? "Confirming Booking..." : `Confirm Booking`}
+              {loading 
+                ? (paymentMethod === "cash" ? "Confirming Booking..." : "Processing Payment...") 
+                : (paymentMethod === "cash" ? "Confirm Booking" : "Proceed to Payment")}
             </button>
           </div>
 
@@ -257,7 +293,9 @@ export default function Payment() {
           disabled={loading}
           className="w-full bg-playoGreen text-white font-bold py-3.5 rounded-xl active:scale-95 transition flex justify-center items-center gap-2 disabled:opacity-50"
         >
-          {loading ? "Confirming..." : `Confirm Booking`}
+          {loading 
+            ? (paymentMethod === "cash" ? "Confirming..." : "Processing...") 
+            : (paymentMethod === "cash" ? "Confirm Booking" : "Proceed to Payment")}
         </button>
       </div>
 

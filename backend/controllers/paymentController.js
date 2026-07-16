@@ -19,9 +19,10 @@ const checkOverlap = (start1, dur1, start2, dur2) => {
 };
 
 export const verifyPayment = async (req, res) => {
-  return res.status(400).json({ error: 'Online payment is temporarily disabled.' });
+  if (!process.env.RAZORPAY_KEY_SECRET) {
+    return res.status(500).json({ error: 'Razorpay credentials not configured on server' });
+  }
 
-  /* TEMPORARILY DISABLED
   const { razorpay_order_id, razorpay_payment_id, razorpay_signature, bookingData } = req.body;
   const userId = req.user.id;
 
@@ -114,5 +115,47 @@ export const verifyPayment = async (req, res) => {
     console.error('Verify payment error:', error);
     res.status(500).json({ error: 'Payment verification failed' });
   }
-  */
+};
+
+export const cancelPayment = async (req, res) => {
+  const { bookingId } = req.body;
+  const userId = req.user.id;
+
+  if (!bookingId) {
+    return res.status(400).json({ error: 'Booking ID is required' });
+  }
+
+  try {
+    // 1. Validate Ownership: only allow the user who created it
+    const booking = await Booking.findOne({ _id: bookingId, userId });
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found.' });
+    }
+
+    // 2. Only Cancel Pending Locked Bookings
+    if (booking.bookingStatus === 'locked' && booking.paymentStatus === 'pending') {
+      booking.bookingStatus = 'cancelled';
+      booking.paymentStatus = 'cancelled';
+      booking.lockedUntil = null;
+      await booking.save();
+
+      return res.status(200).json({
+        success: true,
+        bookingReleased: true,
+        message: 'Booking payment cancelled and slot released.',
+        booking
+      });
+    }
+
+    // 3. Idempotency: if already confirmed, cancelled or expired, return success without modifying
+    return res.status(200).json({
+      success: true,
+      bookingReleased: booking.bookingStatus === 'cancelled' || booking.bookingStatus === 'expired',
+      message: `Booking is already in ${booking.bookingStatus} state.`,
+      booking
+    });
+  } catch (error) {
+    console.error('Cancel payment error:', error);
+    res.status(500).json({ error: 'Failed to cancel payment.' });
+  }
 };
